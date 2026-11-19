@@ -1,0 +1,615 @@
+{
+  "name": "AI Support Agent - RAG + Booking (Web Chat)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "testttt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -592,
+        1712
+      ],
+      "id": "25fcd0d3-cc2b-47bb-a56c-b6ee50afc85e",
+      "name": "Webhook",
+      "webhookId": "d2b670a4-de42-4e78-b8b6-8b2c8d2764d6"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        1904
+      ],
+      "id": "3f4e69aa-867c-4b0e-9e9f-29e22df0b19d",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "yeXDj8EYic2q6RTV",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "18LXq4WvLAwCVi6iE-seXbJ_CSlidWca-UE5anUn4tQs",
+          "mode": "list",
+          "cachedResultName": "company_automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18LXq4WvLAwCVi6iE-seXbJ_CSlidWca-UE5anUn4tQs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Trang tính1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18LXq4WvLAwCVi6iE-seXbJ_CSlidWca-UE5anUn4tQs/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI Response",
+              "displayName": "AI Response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Escalated",
+              "displayName": "Escalated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "5fd22aee-350d-48a5-8aa4-0cf2225e541b",
+      "name": "Log Conversation",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1008,
+        1648
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "kauQwdBEL9xK3Irf",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "6351797057",
+        "text": "=Can ho tro thu cong:\nKhach: {{ $('Extract Message Data').item.json.userId }}\nTin nhan: {{ $('Extract Message Data').item.json.messageText }}\nAI tra loi: {{ $json.output }}",
+        "additionalFields": {}
+      },
+      "id": "cb270a6d-3cc6-4d0d-81b0-7f5ba3cffd1c",
+      "name": "Notify Owner (Telegram)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        1616
+      ],
+      "webhookId": "42e210fa-e13b-4fe6-8bde-204cdc7d33a7",
+      "credentials": {
+        "telegramApi": {
+          "id": "TroqLpRBsfRnshti",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "[ESCALATE]",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d81e816a-cdb9-4b4c-9496-e24488d3a68f",
+      "name": "Check Escalation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        304,
+        1696
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messageText }}",
+        "options": {
+          "systemMessage": "=Ban la nhan vien ho tro khach hang cua AutoFlow Solutions qua WhatsApp.\n\nQuy tac:\n1. Luon tra loi bang cach tra cuu tool search_company_faq truoc khi tra loi ve gia, gio lam viec, chinh sach. Khong tu bia thong tin.\n2. Neu khach muon dat lich tu van, dung Google Calendar Tool de kiem tra khung gio trong trong khoang 9:00-11:00 va 14:00-16:00 cac ngay Thu Hai - Thu Sau, roi tao su kien dat lich.\n3. Neu khong chac chan cau tra loi, hoac khach yeu cau noi chuyen voi nguoi that, ket thuc cau tra loi bang cum tu chinh xac: [ESCALATE]\n4. Tra loi ngan gon, than thien, dung tieng Viet neu khach nhan tieng Viet, dung tieng Anh neu khach nhan tieng Anh."
+        }
+      },
+      "id": "b7b0fc3f-52d7-49e6-9477-f34b05807ee9",
+      "name": "Support Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -48,
+        1696
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "f2c285c19f847938e1c333c1fef09ed089014647f8e45056e768267ae880ed67@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Company"
+        },
+        "options": {}
+      },
+      "id": "ec0fa481-ddf8-468e-8aa0-83d3be464b69",
+      "name": "Google Calendar Tool",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        528,
+        1872
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "qgHI80hwg14RyNu8",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "17e2bec9-1004-471d-944e-5798714d7103",
+      "name": "Embeddings Google Gemini1",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        544,
+        2192
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KPdGrOqvZvBEeuTY",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Tim thong tin ve gia, gio lam viec, chinh sach hoan tien, quy trinh dat lich tu van tu tai lieu FAQ cong ty",
+        "memoryKey": "autoflow_faq_knowledge"
+      },
+      "id": "cdf0b356-d23f-4e9f-8cb6-89358be4f636",
+      "name": "Knowledge Base Tool",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        1888
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Extract Message Data').item.json.userId }}",
+        "contextWindowLength": 10
+      },
+      "id": "67c48d2f-264b-4766-8f37-8c227413edd2",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        64,
+        1888
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "userId",
+              "type": "string",
+              "value": "={{ $json.body.sessionId }}"
+            },
+            {
+              "id": "a2",
+              "name": "messageText",
+              "type": "string",
+              "value": "={{ $json.body.message }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c8bfaef9-811f-4b75-bfa1-2f433abda581",
+      "name": "Extract Message Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -336,
+        1696
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "memoryKey": "autoflow_faq_knowledge",
+        "clearStore": true
+      },
+      "id": "a0a410d7-7f68-4780-ac52-74503ba94f3e",
+      "name": "Insert into Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        96,
+        1008
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "9bafd936-cc5b-43f8-af17-8b7e0d449195",
+      "name": "Embeddings Google Gemini",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        64,
+        1376
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KPdGrOqvZvBEeuTY",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {}
+      },
+      "id": "fed57cb2-f0d6-4298-ac16-deb1e9435996",
+      "name": "Default Data Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [
+        288,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "chunkSize": 500,
+        "chunkOverlap": 50,
+        "options": {}
+      },
+      "id": "93f8c09c-be91-4c69-b280-c87620d0c294",
+      "name": "Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        400,
+        1488
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1Dq0aLFF2uvy-G9D8DgZQaILI1umFVHE9",
+          "mode": "list",
+          "cachedResultName": "faq-cong-ty-mau.txt",
+          "cachedResultUrl": "https://drive.google.com/file/d/1Dq0aLFF2uvy-G9D8DgZQaILI1umFVHE9/view?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "id": "d91b76c8-5f53-4991-95b0-ff15395ee38c",
+      "name": "Google Drive - Download FAQ",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -192,
+        1264
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "V2R4ioM83qJjxgMo",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "e4af6771-6dfd-4c41-a257-8fc9a2bc5bf3",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"reply\": $json.output } }}",
+        "options": {}
+      },
+      "id": "e29c7ee7-0471-40dd-8e6c-66f441b2d581",
+      "name": "Respond to Chat1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        736,
+        1792
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Message Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Owner (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Log Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Escalation": {
+      "main": [
+        [
+          {
+            "node": "Notify Owner (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Chat1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Support Agent": {
+      "main": [
+        [
+          {
+            "node": "Check Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Knowledge Base Tool",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge Base Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message Data": {
+      "main": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Insert into Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Insert into Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive - Download FAQ": {
+      "main": [
+        [
+          {
+            "node": "Insert into Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Drive - Download FAQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Chat1": {
+      "main": [
+        [
+          {
+            "node": "Log Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "d1de32d3-be4d-4231-892e-f3ad939f968a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63819dd24c5bd3d7315fe1f6ebbd05cde445388f69deddea5272373d237ef66b"
+  },
+  "nodeGroups": [],
+  "id": "KuLlhGlUOX8rdHXO",
+  "tags": []
+}

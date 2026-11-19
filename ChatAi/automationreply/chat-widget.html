@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>AutoFlow Solutions - Chat hỗ trợ</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f1115;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+  .chat-container {
+    width: 420px;
+    height: 640px;
+    background: #1a1d24;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+  .chat-header {
+    background: #2563eb;
+    color: white;
+    padding: 16px 20px;
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .chat-header small {
+    display: block;
+    font-weight: 400;
+    opacity: 0.85;
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .msg {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: #2563eb;
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.bot {
+    align-self: flex-start;
+    background: #2a2e37;
+    color: #e5e7eb;
+    border-bottom-left-radius: 4px;
+  }
+  .msg.typing {
+    align-self: flex-start;
+    background: #2a2e37;
+    color: #9ca3af;
+    font-style: italic;
+  }
+  .chat-input {
+    display: flex;
+    padding: 12px;
+    border-top: 1px solid #2a2e37;
+    gap: 8px;
+  }
+  .chat-input input {
+    flex: 1;
+    background: #2a2e37;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: white;
+    font-size: 14px;
+    outline: none;
+  }
+  .chat-input button {
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0 18px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .chat-input button:disabled {
+    background: #3a3f4a;
+    cursor: not-allowed;
+  }
+  .webhook-config {
+    padding: 8px 12px;
+    background: #12141a;
+    border-top: 1px solid #2a2e37;
+  }
+  .webhook-config input {
+    width: 100%;
+    background: #1a1d24;
+    border: 1px solid #2a2e37;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: #9ca3af;
+    font-size: 11px;
+    outline: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="chat-container">
+  <div class="chat-header">
+    AutoFlow Solutions - Hỗ trợ khách hàng
+    <small>AI Agent · trả lời tự động 24/7</small>
+  </div>
+  <div class="chat-messages" id="messages">
+    <div class="msg bot">Chào bạn! Mình là trợ lý AI của AutoFlow Solutions. Bạn cần hỏi về gói dịch vụ, giá cả, hay muốn đặt lịch tư vấn?</div>
+  </div>
+  <div class="chat-input">
+    <input type="text" id="messageInput" placeholder="Nhập tin nhắn..." autocomplete="off">
+    <button id="sendBtn">Gửi</button>
+  </div>
+  <div class="webhook-config">
+    <input type="text" id="webhookUrl" placeholder="http://localhost:5678/webhook-test/ai-support-chat">
+  </div>
+</div>
+
+<script>
+  const messagesEl = document.getElementById('messages');
+  const inputEl = document.getElementById('messageInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const webhookUrlEl = document.getElementById('webhookUrl');
+
+  // Sinh 1 session ID ngẫu nhiên cho mỗi lần mở trang, để AI Agent nhớ ngữ cảnh hội thoại
+  const sessionId = 'web-' + Math.random().toString(36).substring(2, 12);
+
+  // Ghi nhớ webhook URL đã nhập vào ô nhớ tạm của trình duyệt (chỉ tồn tại trong phiên này)
+  let savedUrl = '';
+  webhookUrlEl.addEventListener('input', () => {
+    savedUrl = webhookUrlEl.value.trim();
+  });
+
+  function addMessage(text, sender) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + sender;
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  }
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    const url = webhookUrlEl.value.trim();
+
+    if (!text) return;
+    if (!url) {
+      addMessage('⚠️ Bạn cần dán Webhook URL từ n8n vào ô bên dưới trước khi chat thử.', 'bot');
+      return;
+    }
+
+    addMessage(text, 'user');
+    inputEl.value = '';
+    sendBtn.disabled = true;
+
+    const typingEl = addMessage('Đang trả lời...', 'typing');
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: sessionId, message: text })
+      });
+
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+
+      const data = await response.json();
+      typingEl.remove();
+      addMessage(data.reply || '(Không nhận được câu trả lời hợp lệ từ workflow)', 'bot');
+    } catch (err) {
+      typingEl.remove();
+      addMessage('❌ Lỗi kết nối: ' + err.message + ' — kiểm tra n8n đã Execute Workflow (đang Listening) chưa, và URL có đúng không.', 'bot');
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+</script>
+
+</body>
+</html>

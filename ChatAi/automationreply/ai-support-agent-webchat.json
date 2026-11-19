@@ -1,0 +1,511 @@
+{
+  "name": "AI Support Agent - RAG + Booking (Web Chat)",
+  "nodes": [
+    {
+      "id": "manual-trigger-1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "gdrive-download-1",
+      "name": "Google Drive - Download FAQ",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        20,
+        0
+      ],
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "mode": "list",
+          "value": ""
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "text-splitter-1",
+      "name": "Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        20,
+        220
+      ],
+      "parameters": {
+        "chunkSize": 500,
+        "chunkOverlap": 50
+      }
+    },
+    {
+      "id": "data-loader-1",
+      "name": "Default Data Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "dataType": "binary",
+        "options": {}
+      }
+    },
+    {
+      "id": "embeddings-gemini-1",
+      "name": "Embeddings Google Gemini",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        240,
+        220
+      ],
+      "parameters": {
+        "options": {}
+      }
+    },
+    {
+      "id": "vector-store-insert",
+      "name": "Insert into Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        460,
+        0
+      ],
+      "parameters": {
+        "mode": "insert",
+        "memoryKey": "autoflow_faq_knowledge",
+        "clearStore": true
+      }
+    },
+    {
+      "id": "webhook-chat-1",
+      "name": "Chat Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        500
+      ],
+      "webhookId": "ai-support-chat-webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-support-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "extract-message-1",
+      "name": "Extract Message Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        20,
+        500
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "userId",
+              "type": "string",
+              "value": "={{ $json.body.sessionId }}"
+            },
+            {
+              "id": "a2",
+              "name": "messageText",
+              "type": "string",
+              "value": "={{ $json.body.message }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "chat-model-agent",
+      "name": "Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        240,
+        700
+      ],
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      }
+    },
+    {
+      "id": "memory-buffer-1",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        420,
+        700
+      ],
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Extract Message Data').item.json.userId }}",
+        "contextWindowLength": 10
+      }
+    },
+    {
+      "id": "vector-store-retrieve-tool",
+      "name": "Knowledge Base Tool",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        600,
+        700
+      ],
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "memoryKey": "autoflow_faq_knowledge",
+        "toolName": "search_company_faq",
+        "toolDescription": "Tim thong tin ve gia, gio lam viec, chinh sach hoan tien, quy trinh dat lich tu van tu tai lieu FAQ cong ty"
+      }
+    },
+    {
+      "id": "embeddings-gemini-2",
+      "name": "Embeddings Google Gemini1",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        600,
+        900
+      ],
+      "parameters": {
+        "options": {}
+      }
+    },
+    {
+      "id": "google-calendar-tool",
+      "name": "Google Calendar Tool",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        780,
+        700
+      ],
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "mode": "list",
+          "value": ""
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "support-agent",
+      "name": "Support Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        420,
+        500
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messageText }}",
+        "options": {
+          "systemMessage": "=Ban la nhan vien ho tro khach hang cua AutoFlow Solutions qua WhatsApp.\n\nQuy tac:\n1. Luon tra loi bang cach tra cuu tool search_company_faq truoc khi tra loi ve gia, gio lam viec, chinh sach. Khong tu bia thong tin.\n2. Neu khach muon dat lich tu van, dung Google Calendar Tool de kiem tra khung gio trong trong khoang 9:00-11:00 va 14:00-16:00 cac ngay Thu Hai - Thu Sau, roi tao su kien dat lich.\n3. Neu khong chac chan cau tra loi, hoac khach yeu cau noi chuyen voi nguoi that, ket thuc cau tra loi bang cum tu chinh xac: [ESCALATE]\n4. Tra loi ngan gon, than thien, dung tieng Viet neu khach nhan tieng Viet, dung tieng Anh neu khach nhan tieng Anh."
+        }
+      }
+    },
+    {
+      "id": "check-escalation",
+      "name": "Check Escalation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        500
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "[ESCALATE]",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "notify-owner-telegram",
+      "name": "Notify Owner (Telegram)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        880,
+        400
+      ],
+      "parameters": {
+        "chatId": "",
+        "text": "=Can ho tro thu cong:\nKhach: {{ $('Extract Message Data').item.json.userId }}\nTin nhan: {{ $('Extract Message Data').item.json.messageText }}\nAI tra loi: {{ $json.output }}",
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "respond-webhook-1",
+      "name": "Respond to Chat",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1080,
+        500
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"reply\": $json.output } }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "log-conversation",
+      "name": "Log Conversation",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1280,
+        500
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Message": "={{ $('Extract Message Data').item.json.messageText }}",
+            "AI Response": "={{ $('Support Agent').item.json.output }}",
+            "Escalated": "={{ $('Support Agent').item.json.output.includes('[ESCALATE]') ? 'Yes' : 'No' }}",
+            "Timestamp": "={{ $now.toISO() }}",
+            "Session ID": "={{ $('Extract Message Data').item.json.userId }}"
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Drive - Download FAQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive - Download FAQ": {
+      "main": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Insert into Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Insert into Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Message Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message Data": {
+      "main": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge Base Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Knowledge Base Tool",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Support Agent": {
+      "main": [
+        [
+          {
+            "node": "Check Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Escalation": {
+      "main": [
+        [
+          {
+            "node": "Notify Owner (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Owner (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Chat": {
+      "main": [
+        [
+          {
+            "node": "Log Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
